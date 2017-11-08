@@ -1,5 +1,6 @@
 package com.sms.notification.model;
 
+import android.arch.lifecycle.LiveData;
 import android.arch.persistence.room.Dao;
 import android.arch.persistence.room.Delete;
 import android.arch.persistence.room.Insert;
@@ -14,7 +15,7 @@ import java.util.List;
 @Dao
 public interface OperationDao {
     @Query("SELECT * FROM operations")
-    List<Operation> getAll();
+    LiveData<List<Operation>> getAll();
 
     @Query("SELECT * FROM operations WHERE data > :from")
     List<Operation> findOperationsFromDate(Date from);

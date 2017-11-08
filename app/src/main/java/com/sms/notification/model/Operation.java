@@ -30,6 +30,9 @@ public class Operation {
     @ColumnInfo(name = "suma")
     public String suma;
 
+    @ColumnInfo(name = "disp")
+    public String disp;
+
     @ColumnInfo(name = "data")
     public Date data;
 

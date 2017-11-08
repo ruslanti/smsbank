@@ -1,7 +1,13 @@
 package com.sms.notification;
 
-import android.arch.persistence.room.Room;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
+import android.content.ContentResolver;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -9,13 +15,29 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.sms.notification.model.Operation;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
+
+    private static final String TAG = "MainActivity";
+
+    private List<Operation> movieList = new ArrayList<>();
+    private OperationsViewModel viewModel;
+    private RecyclerView mRecyclerView;
+    private MoviesAdapter mAdapter;
+    private RecyclerView.LayoutManager mLayoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +64,36 @@ public class MainActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        OperationsDatabase db = Room.databaseBuilder(getApplicationContext(),
-                OperationsDatabase.class, "operationsdb").build();
+        mRecyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
+
+        // use this setting to improve performance if you know that changes
+        // in content do not change the layout size of the RecyclerView
+        mRecyclerView.setHasFixedSize(true);
+
+        // use a linear layout manager
+        mLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+
+        // specify an adapter (see also next example)
+        Operation operation = new Operation();
+        operation.card = "card";
+        operation.suma = "10";
+        operation.desc = "desc";
+        movieList.add(operation);
+        mAdapter = new MoviesAdapter(movieList);
+        mRecyclerView.setAdapter(mAdapter);
+
+        viewModel = ViewModelProviders.of(this).get(OperationsViewModel.class);
+
+        viewModel.getItemAndPersonList().observe(MainActivity.this, new Observer<List<Operation>>() {
+            @Override
+            public void onChanged(@Nullable List<Operation> itemAndPeople) {
+                mAdapter.addItems(itemAndPeople);
+            }
+        });
+
+        new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()))
+                .execute(getContentResolver());
     }
 
     @Override
@@ -101,5 +151,47 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    /**
+     * Database initialisation task
+     * Populate the notification database from old SMS
+     */
+    private class DatabaseInitAsyncTask extends AsyncTask<ContentResolver, Void, Void> {
+        private AppDatabase db;
+
+        public DatabaseInitAsyncTask(AppDatabase database) {
+            db = database;
+        }
+
+        @Override
+        protected Void doInBackground(ContentResolver... resolver) {
+
+            if (db.operationDao().getAll().getValue() != null && !db.operationDao().getAll().getValue().isEmpty())
+                return null;
+
+            Log.d(TAG, "initialise database");
+
+            Uri mSmsQueryUri = Uri.parse("content://sms/inbox");
+            List<String> messages = new ArrayList<String>();
+
+            Cursor cursor = null;
+            try {
+                cursor = resolver[0].query(mSmsQueryUri, new String[]{"body"}, "address=102", null, null);
+                if (cursor != null) {
+                    for (boolean hasData = cursor.moveToFirst(); hasData; hasData = cursor.moveToNext()) {
+                        final String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+                        //messages.add(body);
+                        Log.d(TAG, body);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, e.getMessage());
+            } finally {
+                if (cursor != null)
+                    cursor.close();
+            }
+            return null;
+        }
     }
 }

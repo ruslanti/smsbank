@@ -17,8 +17,11 @@ public class MaibOperationFactory implements OperationFactory {
     SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yy HH:mm");
     enum Key {OP, CARD, STATUS, SUMA, DISP, DATA, LOCATIE, OTHER};
 
+    private AmountFactory amountFactory = new AmountFactory();
+
     @Override
     public Operation getOperation(String msg) throws ParseException {
+        Operation operation = new Operation();
         String[] lines = msg.split(System.getProperty("line.separator"));
         for (String line: lines) {
             int pos = line.indexOf(':');
@@ -26,8 +29,6 @@ public class MaibOperationFactory implements OperationFactory {
                 throw new ParseException("Could not parse: "+line, 0);
             String key = line.substring(0, pos);
             String value = line.substring(pos+1).trim();
-
-            Operation operation = new Operation();
 
             switch(parseKey(key)) {
                 case OP:
@@ -40,10 +41,10 @@ public class MaibOperationFactory implements OperationFactory {
                     operation.status = parseStatus(value);
                     break;
                 case SUMA:
-                    operation.suma = value;
+                    operation.suma = amountFactory.getAmount(value);
                     break;
                 case DISP:
-                    operation.disp = value;
+                    operation.disp = amountFactory.getAmount(value).amount;
                     break;
                 case DATA:
                     operation.data = formatter.parse(value);
@@ -57,39 +58,40 @@ public class MaibOperationFactory implements OperationFactory {
             }
         }
 
-        return null;
+        return operation;
     }
 
     private Key parseKey(String name) {
         if (name.startsWith("Op"))
             return Key.OP;
-        else if (name.startsWith("Card"))
+        if (name.startsWith("Card"))
             return Key.CARD;
-        else if (name.startsWith("Status"))
+        if (name.startsWith("Statut"))
             return Key.STATUS;
-        else if (name.startsWith("Suma"))
+        if (name.startsWith("Suma"))
             return Key.SUMA;
-        else if (name.startsWith("Disp"))
+        if (name.startsWith("Disp"))
             return Key.DISP;
-        else if (name.startsWith("Data"))
+        if (name.startsWith("Data"))
             return Key.DATA;
-        else if (name.startsWith("Locatie"))
+        if (name.startsWith("Locatie"))
             return Key.LOCATIE;
-        else
-            return Key.OTHER;
+
+        return Key.OTHER;
     }
 
     private Op parseOp(String value) throws ParseException {
         if (value.startsWith("Retragere"))
             return Op.RETRAGERE;
-        if (value == "Alimentare")
+        if (value.startsWith("Alimentare"))
             return Op.ALIMENTARE;
-        if (value == "Sold")
+        if (value.startsWith("Sold"))
             return Op.SOLD;
         if (value.startsWith("Marfuri"))
             return Op.ACHITARE;
-        if (value == "Plata")
+        if (value.startsWith("Plata"))
             return Op.PLATA;
+
         throw new ParseException("Invalid operation: "+value, 0);
     }
 

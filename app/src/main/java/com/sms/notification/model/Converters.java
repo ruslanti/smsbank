@@ -2,6 +2,7 @@ package com.sms.notification.model;
 
 import android.arch.persistence.room.TypeConverter;
 
+import java.util.Currency;
 import java.util.Date;
 
 /**
@@ -10,7 +11,7 @@ import java.util.Date;
 
 public class Converters {
     @TypeConverter
-    public static Date fromTimestamp(Long value) {
+    public static Date dateFromTimestamp(Long value) {
         return value == null ? null : new Date(value);
     }
 
@@ -21,7 +22,7 @@ public class Converters {
 
     @TypeConverter
     public static Op opFromInteger(Integer value) {
-        if (value == null) value = 0;
+        if (value == null) return Op.UNDEF;
         switch (value) {
             case 1:     return Op.RETRAGERE;
             case 2:     return Op.ALIMENTARE;
@@ -33,7 +34,7 @@ public class Converters {
     }
 
     @TypeConverter
-    public static Integer OpToInteger(Op op) {
+    public static Integer opToInteger(Op op) {
         switch (op) {
             case UNDEF:         return 0;
             case RETRAGERE:     return 1;
@@ -47,7 +48,7 @@ public class Converters {
 
     @TypeConverter
     public static Status statusFromInteger(Integer value) {
-        if (value == null) value = 0;
+        if (value == null) return Status.UNDEF;
         switch (value) {
             case 1:     return Status.RESPINS;
             case 2:     return Status.REUSIT;
@@ -56,7 +57,7 @@ public class Converters {
     }
 
     @TypeConverter
-    public static Integer StatusToInteger(Status status) {
+    public static Integer statusToInteger(Status status) {
         switch (status) {
             case UNDEF:     return 0;
             case RESPINS:   return 1;
@@ -64,4 +65,15 @@ public class Converters {
         }
         return 0;
     }
+
+    @TypeConverter
+    public static Currency currencyFromString(String value) {
+        return value == null ? null : Currency.getInstance(value);
+    }
+
+    @TypeConverter
+    public static String currencyToString(Currency currency) {
+        return currency == null ? null : currency.getCurrencyCode();
+    }
+
 }

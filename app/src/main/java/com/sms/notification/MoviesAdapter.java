@@ -42,7 +42,7 @@ public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.MyViewHold
     public void onBindViewHolder(MyViewHolder holder, int position) {
         Operation movie = moviesList.get(position);
         holder.title.setText(movie.card);
-        holder.genre.setText(movie.suma);
+        holder.genre.setText("genre");
         holder.year.setText(movie.desc);
     }
 

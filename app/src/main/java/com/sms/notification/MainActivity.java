@@ -23,10 +23,17 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.sms.notification.model.Amount;
+import com.sms.notification.model.Card;
+import com.sms.notification.model.CardDao;
 import com.sms.notification.model.Operation;
+import com.sms.notification.model.OperationDao;
 
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -77,7 +84,7 @@ public class MainActivity extends AppCompatActivity
         // specify an adapter (see also next example)
         Operation operation = new Operation();
         operation.card = "card";
-        operation.suma = "10";
+        operation.suma = new Amount();
         operation.desc = "desc";
         movieList.add(operation);
         mAdapter = new MoviesAdapter(movieList);
@@ -170,23 +177,46 @@ public class MainActivity extends AppCompatActivity
             if (db.operationDao().getAll().getValue() != null && !db.operationDao().getAll().getValue().isEmpty())
                 return null;
 
+            MaibOperationFactory factory = new MaibOperationFactory();
+
             Log.d(TAG, "initialise database");
 
             Uri mSmsQueryUri = Uri.parse("content://sms/inbox");
-            List<String> messages = new ArrayList<String>();
-
             Cursor cursor = null;
             try {
                 cursor = resolver[0].query(mSmsQueryUri, new String[]{"body"}, "address=102", null, null);
                 if (cursor != null) {
+                    db.beginTransaction();
+
+                    OperationDao operationDao = db.operationDao();
+                    CardDao cardDao = db.cardDao();
+
+                    List<Operation> operations = new ArrayList<>();
+                    Set<Card> cards = new HashSet<>();
+
                     for (boolean hasData = cursor.moveToFirst(); hasData; hasData = cursor.moveToNext()) {
-                        final String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
-                        //messages.add(body);
-                        Log.d(TAG, body);
+                        try {
+                            final String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+                            Operation op = factory.getOperation(body);
+                            Log.d(TAG, op.toString());
+                            operations.add(op);
+
+                            cards.add(new Card(op.card));
+
+                        } catch (ParseException e) {
+                            Log.w(TAG, "parse sms error: " + e.getMessage());
+                        }
                     }
+
+                    cardDao.insert(cards.toArray(new Card[cards.size()]));
+                    operationDao.insert(operations.toArray(new Operation[operations.size()]));
+
+                    db.setTransactionSuccessful();
+                    db.endTransaction();
                 }
             } catch (Exception e) {
-                Log.e(TAG, e.getMessage());
+                Log.e(TAG, "read sms error: "+e.getMessage());
+                throw e;
             } finally {
                 if (cursor != null)
                     cursor.close();

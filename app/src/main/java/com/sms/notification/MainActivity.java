@@ -15,6 +15,7 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -23,7 +24,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
-import com.sms.notification.model.Amount;
 import com.sms.notification.model.Card;
 import com.sms.notification.model.CardDao;
 import com.sms.notification.model.Operation;
@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity
     private List<Operation> movieList = new ArrayList<>();
     private OperationsViewModel viewModel;
     private RecyclerView mRecyclerView;
-    private MoviesAdapter mAdapter;
+    private OperationsAdapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
 
     @Override
@@ -80,14 +80,15 @@ public class MainActivity extends AppCompatActivity
         // use a linear layout manager
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
+        mRecyclerView.addItemDecoration(new DividerItemDecoration(this,LinearLayoutManager.VERTICAL));
 
         // specify an adapter (see also next example)
-        Operation operation = new Operation();
+/*        Operation operation = new Operation();
         operation.card = "card";
         operation.suma = new Amount();
         operation.desc = "desc";
-        movieList.add(operation);
-        mAdapter = new MoviesAdapter(movieList);
+        movieList.add(operation);*/
+        mAdapter = new OperationsAdapter(movieList);
         mRecyclerView.setAdapter(mAdapter);
 
         viewModel = ViewModelProviders.of(this).get(OperationsViewModel.class);
@@ -95,7 +96,8 @@ public class MainActivity extends AppCompatActivity
         viewModel.getItemAndPersonList().observe(MainActivity.this, new Observer<List<Operation>>() {
             @Override
             public void onChanged(@Nullable List<Operation> itemAndPeople) {
-                mAdapter.addItems(itemAndPeople);
+                Log.d(TAG, "onChanged "+ itemAndPeople.size());
+                mAdapter.addOperations(itemAndPeople);
             }
         });
 
@@ -174,7 +176,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         protected Void doInBackground(ContentResolver... resolver) {
 
-            if (db.operationDao().getAll().getValue() != null && !db.operationDao().getAll().getValue().isEmpty())
+            if (db.operationDao().count() > 0)
                 return null;
 
             MaibOperationFactory factory = new MaibOperationFactory();

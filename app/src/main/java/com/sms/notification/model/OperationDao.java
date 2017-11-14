@@ -17,6 +17,10 @@ public interface OperationDao {
     @Query("SELECT * FROM operations")
     LiveData<List<Operation>> getAll();
 
+    @Query("SELECT count(*) FROM operations")
+    int count();
+
+
     @Query("SELECT * FROM operations WHERE data > :from")
     List<Operation> findOperationsFromDate(Date from);
 

@@ -1,5 +1,6 @@
 package com.sms.notification.model;
 
+import java.text.DecimalFormat;
 import java.util.Currency;
 
 /**
@@ -12,9 +13,8 @@ public class Amount {
 
     @Override
     public String toString() {
-        return "Amount{" +
-                "amount=" + amount +
-                ", currency=" + currency +
-                '}';
+        DecimalFormat df = new DecimalFormat("0");
+        df.setMaximumFractionDigits(2);
+        return df.format((float)amount / (int)Math.pow(10, currency.getDefaultFractionDigits())) + " " + currency;
     }
 }

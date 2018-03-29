@@ -14,14 +14,14 @@ import java.util.List;
  */
 @Dao
 public interface OperationDao {
-    @Query("SELECT * FROM operations")
+    @Query("SELECT * FROM operations ORDER BY data DESC")
     LiveData<List<Operation>> getAll();
 
     @Query("SELECT count(*) FROM operations")
     int count();
 
 
-    @Query("SELECT * FROM operations WHERE data > :from")
+    @Query("SELECT * FROM operations WHERE data > :from ORDER BY data DESC")
     List<Operation> findOperationsFromDate(Date from);
 
     @Insert

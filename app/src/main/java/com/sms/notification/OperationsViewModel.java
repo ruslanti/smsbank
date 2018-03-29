@@ -14,7 +14,7 @@ import java.util.List;
  */
 
 public class OperationsViewModel extends AndroidViewModel {
-    private final LiveData<List<Operation>> itemAndPersonList;
+    private final LiveData<List<Operation>> operationsList;
 
     private AppDatabase appDatabase;
 
@@ -23,12 +23,12 @@ public class OperationsViewModel extends AndroidViewModel {
 
         appDatabase = AppDatabase.getDatabase(this.getApplication());
 
-        itemAndPersonList = appDatabase.operationDao().getAll();
+        operationsList = appDatabase.operationDao().getAll();
     }
 
 
-    public LiveData<List<Operation>> getItemAndPersonList() {
-        return itemAndPersonList;
+    public LiveData<List<Operation>> getOperationsList() {
+        return operationsList;
     }
 
     public void deleteItem(Operation borrowModel) {

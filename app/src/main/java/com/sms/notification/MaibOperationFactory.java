@@ -15,7 +15,7 @@ import java.text.SimpleDateFormat;
 
 public class MaibOperationFactory implements OperationFactory {
     SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yy HH:mm");
-    enum Key {OP, CARD, STATUS, SUMA, DISP, DATA, LOCATIE, OTHER};
+    enum Key {OP, CARD, STATUS, SUMA, DISP, DATA, LOCATIE, SUPORT, OTHER};
 
     private AmountFactory amountFactory = new AmountFactory();
 
@@ -51,6 +51,8 @@ public class MaibOperationFactory implements OperationFactory {
                     break;
                 case LOCATIE:
                     operation.desc = value;
+                    break;
+                case SUPORT:
                     break;
                 default:
                     Log.d(MaibOperationFactory.class.toString(), "Unknown: "+key+ "="+value);

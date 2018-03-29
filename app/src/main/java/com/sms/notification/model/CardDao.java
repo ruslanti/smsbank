@@ -15,6 +15,10 @@ public interface CardDao {
     @Query("SELECT * FROM cards")
     List<Card> getAll();
 
+
+    @Query("SELECT * FROM cards WHERE  code = :code")
+    Card find(String code);
+
     @Insert
     void insert(Card... cards);
 

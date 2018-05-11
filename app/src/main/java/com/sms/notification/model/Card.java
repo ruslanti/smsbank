@@ -1,10 +1,13 @@
 package com.sms.notification.model;
 
+import android.arch.persistence.room.ColumnInfo;
+import android.arch.persistence.room.Embedded;
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 import android.support.annotation.NonNull;
 
 import java.util.Currency;
+import java.util.Date;
 
 /**
  * Created by ruslan on 11/7/17.
@@ -17,8 +20,24 @@ public class Card {
 
     public Currency currency;
 
+    @Embedded(prefix = "sold_")
+    public Amount available;
+
+    @ColumnInfo(name = "sold_data")
+    public Date data;
+
     public Card(@NonNull String code) {
         this.code = code;
+    }
+
+    @Override
+    public String toString() {
+        return "Card{" +
+                "code='" + code + '\'' +
+                ", currency=" + currency +
+                ", available=" + available +
+                ", data=" + data +
+                '}';
     }
 
     @Override

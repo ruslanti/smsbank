@@ -21,6 +21,9 @@ public interface OperationDao {
     int count();
 
 
+    @Query("SELECT * FROM operations WHERE card == :card ORDER BY data DESC")
+    LiveData<List<Operation>> findByCard(String card);
+
     @Query("SELECT * FROM operations WHERE data > :from ORDER BY data DESC")
     List<Operation> findOperationsFromDate(Date from);
 

@@ -1,5 +1,7 @@
 package com.sms.notification.model;
 
+import android.arch.persistence.room.Ignore;
+
 import java.text.DecimalFormat;
 import java.util.Currency;
 
@@ -10,6 +12,14 @@ import java.util.Currency;
 public class Amount {
     public int amount;
     public Currency currency;
+
+    public Amount() {
+    }
+    @Ignore
+    public Amount(int amount, Currency currency) {
+        this.amount = amount;
+        this.currency = currency;
+    }
 
     @Override
     public String toString() {

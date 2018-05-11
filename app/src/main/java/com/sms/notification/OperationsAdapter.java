@@ -71,24 +71,27 @@ public class OperationsAdapter extends GroupsRecyclerViewAdapter {
             Operation operation = getItems().get(position);
             holder.operation.setText(operation.op.toString());
             holder.card.setText(operation.card);
+            String suma = null;
             if (operation.suma != null)
-                holder.suma.setText(operation.suma.toString());
-            else
-                holder.suma.setText("0 MDL");
+                suma = operation.suma.toString();
             switch (operation.op) {
                 case PLATA:
                 case ACHITARE:
-                    holder.suma.setTextColor(Color.RED);
+                    if (null != suma) suma = "-"+suma;
+                    holder.operation.setTextColor(Color.RED);
                     break;
                 case ALIMENTARE:
-                    holder.suma.setTextColor(Color.GREEN);
+                    holder.operation.setTextColor(Color.GREEN);
                     break;
                 case RETRAGERE:
-                    holder.suma.setTextColor(Color.BLUE);
+                    if (null != suma) suma = "-"+suma;
+                    holder.operation.setTextColor(Color.BLUE);
                     break;
                 default:
                     break;
             }
+            if(null != suma)
+                holder.suma.setText(suma);
             holder.desc.setText(operation.desc);
         }
 

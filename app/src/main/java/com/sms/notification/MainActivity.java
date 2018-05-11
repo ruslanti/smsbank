@@ -1,15 +1,17 @@
 package com.sms.notification;
 
 import android.Manifest;
-import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.ContentResolver;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
+import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -27,27 +29,32 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.sms.notification.model.Amount;
 import com.sms.notification.model.Card;
 import com.sms.notification.model.CardDao;
+import com.sms.notification.model.Op;
 import com.sms.notification.model.Operation;
 import com.sms.notification.model.OperationDao;
 
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SmsListener {
 
     private static final String TAG = "MainActivity";
     private static final int PERMISSIONS_REQUEST_READ_SMS = 1;
+    private static final int PERMISSIONS_REQUEST_RECEIVE_SMS = 2;
 
     private OperationsViewModel viewModel;
     private RecyclerView mRecyclerView;
     private OperationsAdapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
+
+    private LiveData<List<Card>> cardList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +71,18 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        Menu menu = navigationView.getMenu();
+        menu.add( R.id.nav_group, -1, Menu.NONE, "All").setCheckable(true).setIcon(R.drawable.ic_menu_gallery);
+
+        cardList = AppDatabase.getDatabase(getApplicationContext()).cardDao().getAll();
+        cardList.observe(MainActivity.this, cards -> {
+            for(Card c: cards) {
+                Log.d(TAG, c.toString());
+                menu.add(R.id.nav_group, -1, Menu.NONE, c.code+"           "+c.available.toString())
+                        .setCheckable(true).setIcon(R.drawable.ic_menu_gallery).setTitleCondensed(c.code);
+            }
+        });
 
         mRecyclerView = findViewById(R.id.my_recycler_view);
 
@@ -82,28 +101,31 @@ public class MainActivity extends AppCompatActivity
 
         viewModel = ViewModelProviders.of(this).get(OperationsViewModel.class);
 
-        viewModel.getOperationsList().observe(MainActivity.this, new Observer<List<Operation>>() {
-            @Override
-            public void onChanged(@Nullable List<Operation> itemAndPeople) {
-                mAdapter.addOperations(itemAndPeople);
-            }
-        });
+        viewModel.getOperationsList().observe(MainActivity.this, operations -> mAdapter.addOperations(operations));
+
+        viewModel.filterByCard(null);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
                 != PackageManager.PERMISSION_GRANTED) {
             // Permission is not granted
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_SMS)) {
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
             } else
-                // No explanation needed; request the permission
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS}, PERMISSIONS_REQUEST_READ_SMS);
-        } else
-            new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()))
-                .execute(getContentResolver());
+        } else {
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            String origin = sharedPref.getString("phone_number", "102");
 
-        SmsReceiver.bindListener(this);
+            new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), origin)
+                    .execute(getContentResolver());
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECEIVE_SMS)) {
+            } else
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECEIVE_SMS}, PERMISSIONS_REQUEST_RECEIVE_SMS);
+        }else
+            SmsReceiver.bindListener(this);
     }
 
     @Override
@@ -113,12 +135,22 @@ public class MainActivity extends AppCompatActivity
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-                    new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()))
+                    SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+                    String origin = sharedPref.getString("phone_number", "102");
+
+                    new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), origin)
                             .execute(getContentResolver());
                 }
                 return;
+            }
+            case PERMISSIONS_REQUEST_RECEIVE_SMS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    SmsReceiver.bindListener(this);
+                }
+                return;
+
             }
         }
     }
@@ -153,8 +185,11 @@ public class MainActivity extends AppCompatActivity
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
+        Log.d(TAG, item.toString());
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivities(new Intent[]{intent});
             return true;
         }
 
@@ -165,8 +200,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
-        int id = item.getItemId();
-
+        viewModel.filterByCard(item.getTitleCondensed().toString());
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
@@ -177,34 +211,15 @@ public class MainActivity extends AppCompatActivity
     public void messageReceived(String messageText) {
         //Log.e(TAG, messageText);
         Toast.makeText(MainActivity.this,"Message: "+messageText, Toast.LENGTH_LONG).show();
-        new DatabaseAddAsyncTask().execute(messageText);
-    }
+        MaibOperationFactory factory = new MaibOperationFactory();
 
-    private class DatabaseAddAsyncTask extends AsyncTask<String, Void, Void> {
-
-        @Override
-        protected Void doInBackground(String... sms) {
-            AppDatabase db = AppDatabase.getDatabase(getApplicationContext());
-            MaibOperationFactory factory = new MaibOperationFactory();
-
-            db.beginTransaction();
-            OperationDao operationDao = db.operationDao();
-            CardDao cardDao = db.cardDao();
-            try {
-                Operation op = factory.getOperation(sms[0]);
-                Log.d(TAG, op.toString());
-
-                if (cardDao.find(op.card) == null)
-                    cardDao.insert(new Card(op.card));
-
-                operationDao.insert(op);
-                db.setTransactionSuccessful();
-                db.endTransaction();
-            } catch (ParseException e) {
-                Log.w(TAG, "parse sms error: " + e.getMessage());
-            }
-            return null;
-
+        try {
+            Operation op = factory.getOperation(messageText);
+            Log.d(TAG, op.toString());
+            viewModel.addOperations(op);
+        } catch (ParseException e) {
+            Log.w(TAG, "parse sms error: " + e.getMessage());
+            Toast.makeText(MainActivity.this,"SMS parse error: "+e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -214,15 +229,17 @@ public class MainActivity extends AppCompatActivity
      */
     private class DatabaseInitAsyncTask extends AsyncTask<ContentResolver, Void, Void> {
         private AppDatabase db;
+        private String origin;
 
-        public DatabaseInitAsyncTask(AppDatabase database) {
-            db = database;
+        public DatabaseInitAsyncTask(AppDatabase database, String origin) {
+            this.db = database;
+            this.origin = origin;
         }
 
         @Override
         protected Void doInBackground(ContentResolver... resolver) {
-
             if (db.operationDao().count() == 0) {
+
                 MaibOperationFactory factory = new MaibOperationFactory();
 
                 Log.d(TAG, "initialise database");
@@ -230,7 +247,7 @@ public class MainActivity extends AppCompatActivity
                 Uri mSmsQueryUri = Uri.parse("content://sms/inbox");
                 Cursor cursor = null;
                 try {
-                    cursor = resolver[0].query(mSmsQueryUri, new String[]{"body"}, "address=102", null, null);
+                    cursor = resolver[0].query(mSmsQueryUri, new String[]{"body"}, "address="+origin, null, null);
                     if (cursor != null) {
                         db.beginTransaction();
 
@@ -238,7 +255,7 @@ public class MainActivity extends AppCompatActivity
                         CardDao cardDao = db.cardDao();
 
                         List<Operation> operations = new ArrayList<>();
-                        Set<Card> cards = new HashSet<>();
+                        Map<String, Card> cards = new HashMap<>();
 
                         for (boolean hasData = cursor.moveToFirst(); hasData; hasData = cursor.moveToNext()) {
                             try {
@@ -246,13 +263,27 @@ public class MainActivity extends AppCompatActivity
                                 Operation op = factory.getOperation(body);
                                 Log.d(TAG, op.toString());
                                 operations.add(op);
-                                cards.add(new Card(op.card));
+                                Card card = cards.get(op.card);
+                                if (card == null) {
+                                    card = new Card(op.card);
+                                    card.currency = op.suma.currency;
+                                    card.data = op.data;
+                                    card.available = new Amount(op.disp, card.currency);
+                                    cards.put(card.code, card);
+                                } else if(card.data.before(op.data)) {
+                                    card.data = op.data;
+                                    if (op.op == Op.SOLD) {
+                                        op.suma = new Amount(op.suma.amount, card.currency);
+                                        card.available = op.suma;
+                                    } else
+                                        card.available = new Amount(op.disp, card.currency);
+                                }
                             } catch (ParseException e) {
                                 Log.w(TAG, "parse sms error: " + e.getMessage());
                             }
                         }
 
-                        cardDao.insert(cards.toArray(new Card[cards.size()]));
+                        cardDao.insert(cards.values().toArray(new Card[cards.size()]));
                         operationDao.insert(operations.toArray(new Operation[operations.size()]));
 
                         db.setTransactionSuccessful();
@@ -266,12 +297,7 @@ public class MainActivity extends AppCompatActivity
                         cursor.close();
                 }
             }
-            NavigationView navigationView = findViewById(R.id.nav_view);
-            Menu menu = navigationView.getMenu();
-            CardDao cardDao = db.cardDao();
-            for(Card c: cardDao.getAll())
-                menu.add( R.id.nav_group, -1, Menu.NONE, c.code)
-                        .setCheckable(true).setIcon(R.drawable.ic_menu_gallery);
+
             return null;
         }
     }

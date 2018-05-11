@@ -21,10 +21,10 @@ public class AmountFactory {
         int pos = value.indexOf(' ');
         if (pos > 0) {
             amount.currency = Currency.getInstance(value.substring(pos + 1).trim());
-            f = Float.parseFloat(value.substring(0, pos));
+            f = Float.parseFloat(value.substring(0, pos).replace(',','.'));
         } else {
             amount.currency = Currency.getInstance(Locale.getDefault());
-            f = Float.parseFloat(value);
+            f = Float.parseFloat(value.replace(',','.'));
         }
         amount.amount = Math.round(f * (int)Math.pow(10, amount.currency.getDefaultFractionDigits()));
         return amount;

@@ -1,6 +1,7 @@
 package com.sms.notification;
 
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -8,10 +9,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.sms.notification.model.Amount;
 import com.sms.notification.model.Operation;
+import com.sms.notification.model.Status;
 
 import java.text.DateFormat;
 import java.util.Arrays;
+import java.util.Currency;
 import java.util.List;
 
 public class OperationsAdapter extends GroupsRecyclerViewAdapter {
@@ -77,18 +81,39 @@ public class OperationsAdapter extends GroupsRecyclerViewAdapter {
             switch (operation.op) {
                 case PLATA:
                 case ACHITARE:
-                    if (null != suma) suma = "-"+suma;
-                    holder.operation.setTextColor(Color.RED);
+                    if (operation.status == Status.REVERSARE) {
+                        holder.operation.setTextColor(Color.GREEN);
+                    } else {
+                        if (null != suma) suma = "-" + suma;
+                        holder.operation.setTextColor(Color.RED);
+                    }
                     break;
+                case P2P_CREDIT:
                 case ALIMENTARE:
                     holder.operation.setTextColor(Color.GREEN);
                     break;
+                case P2P_DEBIT:
                 case RETRAGERE:
                     if (null != suma) suma = "-"+suma;
                     holder.operation.setTextColor(Color.BLUE);
                     break;
+                case SOLD: {
+                    suma = new Amount(operation.disp, Currency.getInstance("MDL")).toString();
+                    }
+                    break;
                 default:
                     break;
+            }
+            if (operation.status == Status.RESPINS) {
+                holder.operation.setPaintFlags(holder.operation.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.card.setPaintFlags(holder.card.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.suma.setPaintFlags(holder.suma.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.desc.setPaintFlags(holder.desc.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            } else {
+                holder.operation.setPaintFlags(holder.operation.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.card.setPaintFlags(holder.card.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.suma.setPaintFlags(holder.suma.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.desc.setPaintFlags(holder.desc.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
             }
             if(null != suma)
                 holder.suma.setText(suma);

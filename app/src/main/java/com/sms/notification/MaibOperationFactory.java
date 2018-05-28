@@ -78,6 +78,8 @@ public class MaibOperationFactory implements OperationFactory {
             return Key.DATA;
         if (name.startsWith("Locatie"))
             return Key.LOCATIE;
+        if (name.startsWith("Suport"))
+            return Key.SUPORT;
 
         return Key.OTHER;
     }
@@ -93,6 +95,10 @@ public class MaibOperationFactory implements OperationFactory {
             return Op.ACHITARE;
         if (value.startsWith("Plata"))
             return Op.PLATA;
+        if (value.startsWith("Transfer P2P(debit)"))
+            return Op.P2P_DEBIT;
+        if (value.startsWith("Transfer P2P(credit)"))
+            return Op.P2P_CREDIT;
 
         throw new ParseException("Invalid operation: "+value, 0);
     }
@@ -102,6 +108,8 @@ public class MaibOperationFactory implements OperationFactory {
             return Status.RESPINS;
         if (value.startsWith("Reusit"))
             return Status.REUSIT;
+        if (value.startsWith("Reversare reusita"))
+            return Status.REVERSARE;
         throw new ParseException("Invalid statut: "+value, 0);
     }
 }

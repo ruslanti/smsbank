@@ -29,6 +29,8 @@ public class Converters {
             case 3:     return Op.SOLD;
             case 4:     return Op.ACHITARE;
             case 5:     return Op.PLATA;
+            case 6:     return Op.P2P_DEBIT;
+            case 7:     return Op.P2P_CREDIT;
             default:    return Op.UNDEF;
         }
     }
@@ -42,6 +44,8 @@ public class Converters {
             case SOLD:          return 3;
             case ACHITARE:      return 4;
             case PLATA:         return 5;
+            case P2P_DEBIT:     return 6;
+            case P2P_CREDIT:    return 7;
         }
         return 0;
     }
@@ -52,6 +56,7 @@ public class Converters {
         switch (value) {
             case 1:     return Status.RESPINS;
             case 2:     return Status.REUSIT;
+            case 3:     return Status.REVERSARE;
             default:    return Status.UNDEF;
         }
     }
@@ -62,6 +67,7 @@ public class Converters {
             case UNDEF:     return 0;
             case RESPINS:   return 1;
             case REUSIT:    return 2;
+            case REVERSARE: return 3;
         }
         return 0;
     }

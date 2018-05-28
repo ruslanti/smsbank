@@ -7,5 +7,6 @@ package com.sms.notification.model;
 public enum Status {
     RESPINS,
     REUSIT,
+    REVERSARE,
     UNDEF
 }

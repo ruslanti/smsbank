@@ -10,5 +10,7 @@ public enum Op {
     SOLD,
     ACHITARE,
     PLATA,
+    P2P_DEBIT,
+    P2P_CREDIT     ,
     UNDEF
 }

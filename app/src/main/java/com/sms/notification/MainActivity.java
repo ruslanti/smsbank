@@ -113,10 +113,8 @@ public class MainActivity extends AppCompatActivity
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS}, PERMISSIONS_REQUEST_READ_SMS);
         } else {
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-            String origin = sharedPref.getString("phone_number", "102");
 
-            new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), origin)
-                    .execute(getContentResolver());
+            new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), sharedPref).execute(getContentResolver());
         }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
@@ -136,9 +134,8 @@ public class MainActivity extends AppCompatActivity
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-                    String origin = sharedPref.getString("phone_number", "102");
 
-                    new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), origin)
+                    new DatabaseInitAsyncTask(AppDatabase.getDatabase(getApplicationContext()), sharedPref)
                             .execute(getContentResolver());
                 }
                 return;
@@ -230,24 +227,27 @@ public class MainActivity extends AppCompatActivity
     private class DatabaseInitAsyncTask extends AsyncTask<ContentResolver, Void, Void> {
         private AppDatabase db;
         private String origin;
+        private Integer lastId;
+        SharedPreferences sharedPreferences;
 
-        public DatabaseInitAsyncTask(AppDatabase database, String origin) {
+        public DatabaseInitAsyncTask(AppDatabase database, SharedPreferences sharedPreferences) {
             this.db = database;
-            this.origin = origin;
+            this.sharedPreferences = sharedPreferences;
+            origin = sharedPreferences.getString("phone_number", "102");
+            lastId = sharedPreferences.getInt("last_id", 0);
         }
 
         @Override
         protected Void doInBackground(ContentResolver... resolver) {
-            if (db.operationDao().count() == 0) {
-
                 MaibOperationFactory factory = new MaibOperationFactory();
 
-                Log.d(TAG, "initialise database");
+                Log.d(TAG, "reload messages. last_id: " + lastId);
 
                 Uri mSmsQueryUri = Uri.parse("content://sms/inbox");
                 Cursor cursor = null;
                 try {
-                    cursor = resolver[0].query(mSmsQueryUri, new String[]{"body"}, "address="+origin, null, null);
+                    cursor = resolver[0].query(mSmsQueryUri, new String[]{"_id", "body", "date"},
+                            "address="+origin+" and _id>"+lastId, null, "date asc");
                     if (cursor != null) {
                         db.beginTransaction();
 
@@ -258,8 +258,11 @@ public class MainActivity extends AppCompatActivity
                         Map<String, Card> cards = new HashMap<>();
 
                         for (boolean hasData = cursor.moveToFirst(); hasData; hasData = cursor.moveToNext()) {
+                            final String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+                            final int id  = cursor.getInt(cursor.getColumnIndexOrThrow("_id"));
+                            if (id > lastId) lastId = id;
                             try {
-                                final String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+
                                 Operation op = factory.getOperation(body);
                                 Log.d(TAG, op.toString());
                                 operations.add(op);
@@ -279,15 +282,21 @@ public class MainActivity extends AppCompatActivity
                                         card.available = new Amount(op.disp, card.currency);
                                 }
                             } catch (ParseException e) {
-                                Log.w(TAG, "parse sms error: " + e.getMessage());
+                                Log.w(TAG, "parse sms error: " + e.getMessage() + "; body: "+body);
                             }
                         }
 
-                        cardDao.insert(cards.values().toArray(new Card[cards.size()]));
+                        for (Card c: cards.values()) {
+                            if (cardDao.find(c.code) == null)
+                                cardDao.insert(c);
+                        }
                         operationDao.insert(operations.toArray(new Operation[operations.size()]));
 
                         db.setTransactionSuccessful();
                         db.endTransaction();
+                        SharedPreferences.Editor edit = sharedPreferences.edit();
+                        edit.putInt("last_id", lastId);
+                        edit.commit();
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "read sms error: " + e.getMessage());
@@ -296,8 +305,6 @@ public class MainActivity extends AppCompatActivity
                     if (cursor != null)
                         cursor.close();
                 }
-            }
-
             return null;
         }
     }
